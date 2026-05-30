@@ -42,5 +42,13 @@ Zasady klasyfikacji intencji:
   → preferred_time = wybrana godzina (HH:MM)
   → service_name i preferred_day PRZEPISZ z historii rozmowy (są w poprzednich wiadomościach)
   → response_text = krótkie potwierdzenie przyjęcia wyboru
-- UNKNOWN: pytanie poza zakresem salonu (zniżki studenckie, alergie, itp.)`
+- UNKNOWN: pytanie poza zakresem salonu (zniżki studenckie, alergie, itp.)
+
+KRYTYCZNA ZASADA DAT — ZAWSZE stosuj:
+- preferred_day MUSI być datą w przyszłości (>= dzisiaj ${today})
+- Gdy klientka mówi "wtorek", "w piątek", "w sobotę" itp. → wybierz NAJBLIŻSZY przyszły taki dzień (NIE miniony)
+- Gdy mówi "jutro" → ${today} + 1 dzień
+- Gdy mówi "dzisiaj" lub "dziś" → ${today}
+- NIGDY nie podawaj daty z przeszłości
+- Jeśli klientka podała godzinę (np. "od 16", "po 15", "wieczorem") → wpisz ją w preferred_time jako HH:MM`
 }

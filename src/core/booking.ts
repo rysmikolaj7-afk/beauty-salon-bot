@@ -147,10 +147,28 @@ export async function processBooking(ctx: BookingContext): Promise<BookingResult
   const pracownik = await findPracownikForUsluga(salon.Nazwa, usluga.Nazwa)
   const calendarId = pracownik?.calendar_id || 'mikirys3333@gmail.com'
 
+  // Reject past dates entirely
+  const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: SALON_TIMEZONE }) // YYYY-MM-DD
+  if (preferredDay < todayStr) {
+    return {
+      responseText: `Przepraszam, data ${preferredDay} jest już w przeszłości. Proszę podać dzień od dziś lub późniejszy. 📅`,
+    }
+  }
+
   const busySlots = await getFreeBusy(calendarId, preferredDay)
 
   const { open, close } = parseOpeningHours(salon.godziny_otwarcia)
-  const freeSlots = generateFreeSlots(busySlots, preferredDay, open, close, usluga.czas_trwania_min)
+  let freeSlots = generateFreeSlots(busySlots, preferredDay, open, close, usluga.czas_trwania_min)
+
+  // If booking for today — filter out slots that are already past (+ 30 min buffer)
+  if (preferredDay === todayStr) {
+    const nowWarsaw = new Date(new Date().toLocaleString('en-US', { timeZone: SALON_TIMEZONE }))
+    const nowMinutes = nowWarsaw.getHours() * 60 + nowWarsaw.getMinutes() + 30 // 30 min buffer
+    freeSlots = freeSlots.filter(slot => {
+      const [h, m] = slot.split(':').map(Number)
+      return h * 60 + m > nowMinutes
+    })
+  }
 
   logger.info(
     { preferredDay, freeSlots: freeSlots.length, busySlots: busySlots.length },
