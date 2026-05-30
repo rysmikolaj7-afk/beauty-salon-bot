@@ -1,0 +1,7 @@
+export * from './klienci.js'
+export * from './konwersacje.js'
+export * from './wiadomosci.js'
+export * from './uslugi.js'
+export * from './pracownicy.js'
+export * from './eskalacje.js'
+export * from './rezerwacje.js'
