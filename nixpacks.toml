@@ -1,0 +1,3 @@
+# We use tsx to run TypeScript directly at runtime - no compilation needed
+[phases.build]
+cmds = []
