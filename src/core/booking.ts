@@ -166,14 +166,25 @@ export async function processBooking(ctx: BookingContext): Promise<BookingResult
     }
   }
 
-  const topSlots = freeSlots.slice(0, 5)
+  // If user specified preferred time (e.g. "from 16:00"), filter slots to start from that hour
+  let slotsToShow = freeSlots
+  if (ctx.preferredTime) {
+    const [prefH, prefM] = ctx.preferredTime.split(':').map(Number)
+    const prefMinutes = prefH * 60 + (prefM || 0)
+    const fromPreferred = freeSlots.filter(slot => {
+      const [h, m] = slot.split(':').map(Number)
+      return h * 60 + m >= prefMinutes
+    })
+    // Use filtered slots if any exist, otherwise fall back to all slots
+    if (fromPreferred.length > 0) slotsToShow = fromPreferred
+  }
+
+  const topSlots = slotsToShow.slice(0, 5)
   const slotsText = topSlots.join(', ')
+  const moreInfo = slotsToShow.length > 5 ? ` (i ${slotsToShow.length - 5} więcej)` : ''
 
   return {
-    responseText: `Mamy wolne terminy na ${usluga.Nazwa} (${usluga.czas_trwania_min} min, ${usluga.cena} PLN) w dniu ${preferredDay}:
-⏰ ${slotsText}
-
-Która godzina Pani/Panu odpowiada?`,
+    responseText: `Mamy wolne terminy na ${usluga.Nazwa} (${usluga.czas_trwania_min} min, ${usluga.cena} PLN) w dniu ${preferredDay}:\n⏰ ${slotsText}${moreInfo}\n\nKtóra godzina Pani/Panu odpowiada?`,
     availableSlots: topSlots,
     uslugaId: usluga.id,
     pracownikId: pracownik?.id,

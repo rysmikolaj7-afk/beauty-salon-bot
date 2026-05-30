@@ -77,6 +77,7 @@ export async function processBrain(routeResult: RouteResult): Promise<string> {
       salon,
       serviceName: object.service_name || '',
       preferredDay: object.preferred_day || new Date().toISOString().split('T')[0],
+      preferredTime: object.preferred_time || undefined,
       clientId: klient.id,
       conversationId: konwersacja.id,
       subscriberId: message.subscriberId,
