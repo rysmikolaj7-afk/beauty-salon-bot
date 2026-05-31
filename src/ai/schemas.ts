@@ -16,6 +16,9 @@ export const AdminCommandSchema = z.object({
     'REMOVE_STAFF',
     'UPDATE_PRICE',
     'LIST_BOOKINGS',
+    'LIST_SERVICES',
+    'LIST_STAFF',
+    'LIST_UPCOMING',
     'ESCALATION_REPLY',
     'UNKNOWN',
   ]),
@@ -26,6 +29,7 @@ export const AdminCommandSchema = z.object({
     price: z.number().nullable().optional(),
     escalation_number: z.number().nullable().optional(),
     reply_text: z.string().nullable().optional(),
+    date_range: z.string().nullable().optional(),
   }),
 })
 

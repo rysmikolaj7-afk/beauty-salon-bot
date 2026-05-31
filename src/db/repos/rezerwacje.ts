@@ -61,3 +61,27 @@ export async function listTodayRezerwacje(salonNazwa: string): Promise<Rezerwacj
     status: (r.get('status') as string) || '',
   }))
 }
+
+export async function listRezerwacjeByDate(
+  salonNazwa: string,
+  dateFrom: string,
+  dateTo: string
+): Promise<Rezerwacja[]> {
+  const records = await base('Rezerwacje')
+    .select({
+      filterByFormula: `AND({data_wizyty}>='${dateFrom}', {data_wizyty}<='${dateTo}', {status}='potwierdzona', FIND('${salonNazwa}', ARRAYJOIN({Salon})))`,
+      sort: [
+        { field: 'data_wizyty', direction: 'asc' },
+        { field: 'godzina_rozpoczecia', direction: 'asc' },
+      ],
+    })
+    .all()
+
+  return records.map(r => ({
+    id: r.id,
+    data_wizyty: (r.get('data_wizyty') as string) || '',
+    godzina_rozpoczecia: (r.get('godzina_rozpoczecia') as string) || '',
+    calendar_event_id: (r.get('calendar_event_id') as string) || '',
+    status: (r.get('status') as string) || '',
+  }))
+}

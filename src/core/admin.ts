@@ -6,15 +6,52 @@ import {
   createPracownik,
   deactivatePracownik,
   findPracownikByName,
+  listPracownicy,
 } from '../db/repos/pracownicy.js'
-import { findUsluga, updateCenaUslugi } from '../db/repos/uslugi.js'
-import { listTodayRezerwacje } from '../db/repos/rezerwacje.js'
+import { findUsluga, updateCenaUslugi, listUslugi } from '../db/repos/uslugi.js'
+import { listTodayRezerwacje, listRezerwacjeByDate } from '../db/repos/rezerwacje.js'
 import {
   findEskalacjaByNumber,
   closeEskalacja,
   getSubscriberIdForEskalacja,
 } from '../db/repos/eskalacje.js'
 import type { RouteResult } from './router.js'
+
+function parseDateRange(
+  dateRange: string | null | undefined,
+  today: string
+): { from: string; to: string; label: string } {
+  const todayDate = new Date(today)
+
+  if (!dateRange || dateRange === 'null') {
+    const to = new Date(todayDate)
+    to.setDate(to.getDate() + 7)
+    return { from: today, to: to.toISOString().split('T')[0], label: `${today} – ${to.toISOString().split('T')[0]}` }
+  }
+
+  const lower = dateRange.toLowerCase().trim()
+
+  if (lower === 'jutro') {
+    const tomorrow = new Date(todayDate)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const tomorrowStr = tomorrow.toISOString().split('T')[0]
+    return { from: tomorrowStr, to: tomorrowStr, label: tomorrowStr }
+  }
+
+  if (lower.includes('tydzień') || lower.includes('tydzie') || lower.includes('week')) {
+    const to = new Date(todayDate)
+    to.setDate(to.getDate() + 7)
+    return { from: today, to: to.toISOString().split('T')[0], label: `${today} – ${to.toISOString().split('T')[0]}` }
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateRange)) {
+    return { from: dateRange, to: dateRange, label: dateRange }
+  }
+
+  const to = new Date(todayDate)
+  to.setDate(to.getDate() + 7)
+  return { from: today, to: to.toISOString().split('T')[0], label: `${today} – ${to.toISOString().split('T')[0]}` }
+}
 
 export async function processAdmin(routeResult: RouteResult): Promise<string> {
   const { salon, message } = routeResult
@@ -29,6 +66,10 @@ Możliwe komendy:
 - REMOVE_STAFF: usuń/dezaktywuj pracownika (params: name)
 - UPDATE_PRICE: zmień cenę usługi (params: service_name, price)
 - LIST_BOOKINGS: pokaż dzisiejsze rezerwacje (brak params)
+- LIST_SERVICES: pokaż usługi, cennik, co oferujemy, jakie usługi mamy, lista usług
+- LIST_STAFF: pokaż pracowników, kto pracuje, lista pracowników, personel
+- LIST_UPCOMING: rezerwacje na jutro, rezerwacje na tydzień, najbliższe wizyty, plan na [data]
+  → date_range: wpisz "jutro", "ten tydzień" lub datę YYYY-MM-DD; jeśli nie podano → null
 - ESCALATION_REPLY: odpowiedź na eskalację (params: escalation_number, reply_text)
 - UNKNOWN: nieznana komenda
 
@@ -77,6 +118,41 @@ Odpowiadaj WYŁĄCZNIE w formacie JSON bez markdown.`,
         .map(r => `• ${r.godzina_rozpoczecia} — ${r.status}`)
         .join('\n')
       return `Dzisiejsze rezerwacje (${rezerwacje.length}):\n${lista}`
+    }
+
+    case 'LIST_SERVICES': {
+      const uslugi = await listUslugi(salon.Nazwa)
+      if (uslugi.length === 0) {
+        return 'Brak aktywnych usług w salonie.'
+      }
+      const lista = uslugi
+        .map(u => `• ${u.Nazwa} — ${u.cena} PLN, ${u.czas_trwania_min} min`)
+        .join('\n')
+      return `Aktywne usługi (${uslugi.length}):\n${lista}`
+    }
+
+    case 'LIST_STAFF': {
+      const pracownicy = await listPracownicy(salon.Nazwa)
+      if (pracownicy.length === 0) {
+        return 'Brak aktywnych pracowników w salonie.'
+      }
+      const lista = pracownicy
+        .map(p => `• ${p.Imie_Nazwisko} (${p.email})`)
+        .join('\n')
+      return `Aktywni pracownicy (${pracownicy.length}):\n${lista}`
+    }
+
+    case 'LIST_UPCOMING': {
+      const today = new Date().toISOString().split('T')[0]
+      const { from, to, label } = parseDateRange(object.params.date_range, today)
+      const rezerwacje = await listRezerwacjeByDate(salon.Nazwa, from, to)
+      if (rezerwacje.length === 0) {
+        return `Brak rezerwacji w okresie ${label}.`
+      }
+      const lista = rezerwacje
+        .map(r => `• ${r.data_wizyty} ${r.godzina_rozpoczecia} — ${r.status}`)
+        .join('\n')
+      return `Rezerwacje ${label} (${rezerwacje.length}):\n${lista}`
     }
 
     case 'ESCALATION_REPLY': {

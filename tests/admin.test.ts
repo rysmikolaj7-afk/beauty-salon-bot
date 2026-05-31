@@ -17,6 +17,7 @@ vi.mock('../src/db/repos/rezerwacje.js', () => ({
     { id: 'r1', data_wizyty: '2026-05-29', godzina_rozpoczecia: '10:00', calendar_event_id: 'ev1', status: 'potwierdzona' },
     { id: 'r2', data_wizyty: '2026-05-29', godzina_rozpoczecia: '14:00', calendar_event_id: 'ev2', status: 'potwierdzona' },
   ]),
+  listRezerwacjeByDate: vi.fn().mockResolvedValue([]),
   createRezerwacja: vi.fn(),
 }))
 
@@ -125,5 +126,51 @@ describe('admin commands', () => {
     const { processAdmin } = await import('../src/core/admin.js')
     const result = await processAdmin({ ...testRouteResult, message: { ...testRouteResult.message, text: 'coś niezrozumiałego' } })
     expect(result).toContain('Nie rozumiem')
+  })
+
+  it('LIST_SERVICES returns formatted service list', async () => {
+    const { generateObject } = await import('ai')
+    vi.mocked(generateObject).mockResolvedValueOnce({
+      object: { command: 'LIST_SERVICES', params: {} },
+    } as any)
+    const { listUslugi } = await import('../src/db/repos/uslugi.js')
+    vi.mocked(listUslugi).mockResolvedValueOnce([
+      { id: 'u1', Nazwa: 'Manicure hybrydowy', cena: 110, czas_trwania_min: 60 },
+      { id: 'u2', Nazwa: 'Pedicure', cena: 90, czas_trwania_min: 45 },
+    ])
+    const { processAdmin } = await import('../src/core/admin.js')
+    const result = await processAdmin(testRouteResult)
+    expect(result).toContain('Manicure hybrydowy')
+    expect(result).toContain('PLN')
+  })
+
+  it('LIST_STAFF returns formatted staff list', async () => {
+    const { generateObject } = await import('ai')
+    vi.mocked(generateObject).mockResolvedValueOnce({
+      object: { command: 'LIST_STAFF', params: {} },
+    } as any)
+    const { listPracownicy } = await import('../src/db/repos/pracownicy.js')
+    vi.mocked(listPracownicy).mockResolvedValueOnce([
+      { id: 'p1', Imie_Nazwisko: 'Anna Kowalska', email: 'anna@test.com', calendar_id: '' },
+    ])
+    const { processAdmin } = await import('../src/core/admin.js')
+    const result = await processAdmin(testRouteResult)
+    expect(result).toContain('Anna Kowalska')
+    expect(result).toContain('@')
+  })
+
+  it('LIST_UPCOMING returns reservations for date range', async () => {
+    const { generateObject } = await import('ai')
+    vi.mocked(generateObject).mockResolvedValueOnce({
+      object: { command: 'LIST_UPCOMING', params: { date_range: 'jutro' } },
+    } as any)
+    const { listRezerwacjeByDate } = await import('../src/db/repos/rezerwacje.js')
+    vi.mocked(listRezerwacjeByDate as any).mockResolvedValueOnce([
+      { id: 'r1', data_wizyty: '2026-06-01', godzina_rozpoczecia: '10:00', calendar_event_id: 'ev1', status: 'potwierdzona' },
+    ])
+    const { processAdmin } = await import('../src/core/admin.js')
+    const result = await processAdmin(testRouteResult)
+    expect(result).toContain('2026-06-01')
+    expect(result).toContain('10:00')
   })
 })
